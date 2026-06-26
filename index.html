@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cholqʼij — определитель дня</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --obsidian:#0d1311;
+    --panel:#141c19;
+    --panel-2:#101714;
+    --jade:#34a088;
+    --jade-bright:#5fc2a8;
+    --bone:#e8e2d2;
+    --bone-dim:#b9bdb2;
+    --sage:#7e8d85;
+    --hair:rgba(232,226,210,.12);
+    --hair-strong:rgba(232,226,210,.22);
+    --dir:#5fc2a8; /* set per result */
+    --dir-ink:#5fc2a8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(52,160,136,.10), transparent 60%),
+      var(--obsidian);
+    color:var(--bone);
+    font-family:"Inter",system-ui,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:clamp(20px,5vw,64px) 20px 80px;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--jade-bright);margin:0 0 14px;
+  }
+  h1{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:500;font-size:clamp(34px,7vw,52px);
+    line-height:1.02;letter-spacing:-.01em;margin:0 0 12px;
+  }
+  .lede{color:var(--bone-dim);max-width:54ch;margin:0 0 36px;font-size:15.5px}
+  .lede b{color:var(--bone);font-weight:500}
+
+  /* input */
+  .console{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--hair-strong);
+    border-radius:16px;padding:22px;
+    display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;
+  }
+  .field{flex:1 1 200px;min-width:170px}
+  label{display:block;font-family:"IBM Plex Mono",monospace;font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--sage);margin:0 0 8px}
+  input[type=date]{
+    width:100%;background:#0b110f;color:var(--bone);
+    border:1px solid var(--hair-strong);border-radius:10px;
+    padding:13px 14px;font-family:"IBM Plex Mono",monospace;font-size:15px;
+    color-scheme:dark;
+  }
+  input[type=date]:focus{outline:2px solid var(--jade);outline-offset:1px;border-color:transparent}
+  button{
+    flex:0 0 auto;cursor:pointer;border:none;border-radius:10px;
+    background:var(--jade);color:#06120e;
+    font-family:"Inter";font-weight:600;font-size:15px;letter-spacing:.01em;
+    padding:14px 22px;transition:transform .12s ease,background .2s ease;
+  }
+  button:hover{background:var(--jade-bright)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
+
+  /* result */
+  .result{margin-top:30px;opacity:0;transform:translateY(8px);
+    transition:opacity .45s ease,transform .45s ease}
+  .result.show{opacity:1;transform:none}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--hair-strong);border-radius:18px;overflow:hidden;
+    position:relative;
+  }
+  .card::before{content:"";position:absolute;inset:0 0 auto;height:3px;
+    background:var(--dir);opacity:.9}
+
+  .head{padding:28px 26px 22px;display:flex;gap:22px;align-items:center;
+    border-bottom:1px solid var(--hair)}
+  .numeral{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:7px;
+    min-width:58px}
+  .dots{display:flex;gap:6px;height:11px;align-items:center}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--dir)}
+  .bars{display:flex;flex-direction:column;gap:5px;width:42px}
+  .bar{height:8px;border-radius:3px;background:var(--dir)}
+  .numlabel{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--sage)}
+
+  .names{flex:1 1 auto;min-width:0}
+  .kiche{font-family:"Fraunces",serif;font-weight:600;
+    font-size:clamp(28px,6vw,40px);line-height:1;letter-spacing:-.01em;margin:0 0 6px}
+  .yuc{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--bone-dim);
+    letter-spacing:.04em}
+  .yuc .sep{color:var(--sage);margin:0 8px}
+  .ds{margin-top:9px;font-size:13.5px;color:var(--bone-dim)}
+  .ds-tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--jade-bright);
+    border:1px solid var(--hair-strong);border-radius:4px;padding:2px 6px;margin-right:9px;
+    vertical-align:1px}
+  .dsen{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--sage)}
+
+  .rose-wrap{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .rose{width:62px;height:62px}
+  .rose .q{stroke:var(--hair-strong);stroke-width:1.2;fill:rgba(232,226,210,.04)}
+  .rose .q.active{fill:var(--dir)}
+  .rose .center{fill:var(--jade)}
+  .dir-label{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--bone-dim);
+    text-align:center;letter-spacing:.04em}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair)}
+  .cell{background:var(--panel);padding:18px 22px}
+  .cell .k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--sage);margin:0 0 7px}
+  .cell .v{font-family:"Fraunces",serif;font-size:18px;font-weight:500;color:var(--bone)}
+  .cell .v small{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--bone-dim);
+    font-weight:400;display:block;margin-top:2px}
+  .swatch{display:inline-block;width:12px;height:12px;border-radius:3px;
+    vertical-align:middle;margin-right:8px;border:1px solid var(--hair-strong)}
+
+  .read{padding:24px 26px 6px}
+  .read h3{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--sage);margin:0 0 10px;font-weight:500}
+  .read p{margin:0 0 16px;font-size:15px;color:var(--bone-dim)}
+  .read p b{color:var(--bone);font-weight:500}
+  .read .angle{display:flex;align-items:center;gap:10px;
+    font-family:"Fraunces",serif;font-weight:600;font-size:20px;color:var(--bone);
+    margin:4px 0 14px}
+  .read .angle::before{content:"";width:9px;height:9px;border-radius:50%;
+    background:var(--dir);flex:0 0 auto}
+  .read .angle.day{margin-top:30px;padding-top:24px;border-top:1px solid var(--hair)}
+  .read .day-note{font-size:12.5px;color:var(--sage);font-style:italic;margin:0 0 14px}
+  .read .image-line{font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+    color:var(--jade-bright);letter-spacing:.04em;margin:0 0 16px}
+  .read .facets{margin:0 0 6px}
+  .read .facets > div{display:grid;grid-template-columns:140px 1fr;gap:16px;
+    padding:12px 0;border-top:1px solid var(--hair)}
+  .read .facets > div:first-child{border-top:none;padding-top:2px}
+  .read .facets dt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--sage);padding-top:2px}
+  .read .facets dd{margin:0;font-size:14.5px;color:var(--bone-dim)}
+  @media(max-width:560px){.read .facets > div{grid-template-columns:1fr;gap:5px}}
+  .read .num-q{font-size:14px;color:var(--bone-dim);
+    border-left:2px solid var(--dir);padding-left:14px;margin-bottom:20px}
+  .read .assoc{font-size:13px;color:var(--bone-dim);
+    background:rgba(232,226,210,.03);border:1px solid var(--hair);
+    border-radius:10px;padding:12px 14px;margin:0 0 22px}
+  .read .assoc .lbl{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--sage);margin-bottom:6px}
+  .read .synth{font-size:14.5px;color:var(--bone);
+    background:rgba(52,160,136,.06);border:1px solid var(--hair);
+    border-left:2px solid var(--dir);border-radius:8px;padding:14px 16px;margin:0 0 6px}
+  .read .synth b{color:var(--dir);font-weight:500}
+
+  .note{font-size:12.5px;color:var(--sage);line-height:1.6;margin:26px 4px 0}
+  .note b{color:var(--bone-dim);font-weight:500}
+
+  .empty{padding:34px 26px;color:var(--sage);font-size:14px}
+
+  @media (max-width:560px){
+    .head{flex-wrap:wrap;gap:18px}
+    .rose-wrap{order:3}
+    .grid{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .result{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Cholqʼij · счёт хранителей дней</p>
+  <h1>Определитель дня</h1>
+  <p class="lede">Непрерывный 260-дневный счёт <b>ahqʼij</b> — календаристов горной Гватемалы, по корреляции GMT. Введи дату, чтобы узнать её число-тон, нawal, сторону света, волну-трецену и соседние дни.</p>
+
+  <div class="console">
+    <div class="field">
+      <label for="d">Дата</label>
+      <input type="date" id="d" min="1800-01-01" max="2200-12-31">
+    </div>
+    <button id="go">Определить день</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="card" id="card"></div>
+  </div>
+
+  <p class="note" id="note" hidden></p>
+</div>
+
+<script>
+const mod=(n,m)=>((n%m)+m)%m;
+
+// canonical 20 nawales (0=Imox) with Yucatec + sign# in classic list (1..20) + essence
+const N=[
+ {k:"Imox",y:"Imix",core:"Изначальные воды, исток и питание. Связь с подсознанием и скрытыми силами, с левой стороной мира. В тени — потерянность в хаосе, сомнение, тревога без причины."},
+ {k:"Iqʼ",y:"Ik",core:"Дыхание, ветер, дух и слово. Жизненная сила, передаваемая речью; вдохновение, чистота помысла, передача смысла. В тени — рассеянность, переменчивость, слова вместо дел."},
+ {k:"Aqʼabʼal",y:"Akbal",core:"Рассвет и тьма перед ним, дом, обновление. Порог ночи и дня, проступание скрытого на свет, новое начало. В тени — страх, желание спрятаться во мраке."},
+ {k:"Kʼat",y:"Kan",core:"Сеть и закром. Собирать, связывать, удерживать ценное — людей, связи, накопленное. В тени — путы, запутанность, плен долгов и привязанностей."},
+ {k:"Kan",y:"Chicchan",core:"Змей, жизненная сила, инстинкт. Энергия, текущая по хребту; телесная мудрость, страсть, харизма, целительный жар. В тени — во власти импульсов, вспыльчивость, одержимость."},
+ {k:"Keme",y:"Cimi",core:"Порог между мирами, предки, трансформация. Спокойствие у границы, сопровождение через переход, дар исцеления и отпускания. В тени — груз утрат, оцепенение."},
+ {k:"Kej",y:"Manik",core:"Олень, четыре опоры, сила и ответственность. Авторитет, который держит; устойчивость, покровительство, несущая опора. В тени — упрямство, давление, перегрузка чужим весом."},
+ {k:"Qʼanil",y:"Lamat",core:"Семя, зрелость, плодородие. Рост и изобилие, забота о всходах, начало, несущее плод. В тени — разбросанность, незрелые порывы, распыление сил."},
+ {k:"Toj",y:"Muluk",core:"Подношение, расплата, огонь жертвенника. Взаимность, благодарность, искупление, несение бремени за других. В тени — вина, счёты, страдание как валюта."},
+ {k:"Tzʼiʼ",y:"Oc",core:"Пёс: верность, любовь и закон. Преданность, чувство справедливости, защита своих, надёжность. В тени — ревность, обидчивость, двойные мерки к себе и другим."},
+ {k:"Bʼatzʼ",y:"Chuen",core:"Обезьяна и нить. Творчество, искусство, игра; нить времени и рода, непрерывность. День самих календаристов. В тени — запутаться в начатом, заиграться, рассеяться."},
+ {k:"E",y:"Eb",core:"Дорога, путь, странствие. Судьба, ведение других по их тропе, дипломатия и удача в пути. В тени — неприкаянность, бегство в дорогу от оседлости."},
+ {k:"Aj",y:"Ben",core:"Тростник, дом, посох. Вертикаль и опора, защита семьи и детей, нравственный стержень. В тени — негибкость, морализаторство, жёсткость ради «правильно»."},
+ {k:"Iʼx",y:"Ix",core:"Ягуар: земля, алтарь, магия. Скрытая мощь, грация, чутьё к незримому, сила святых мест. В тени — затаённость, своеволие, власть, обращённая в себя."},
+ {k:"Tzʼikin",y:"Men",core:"Птица (орёл, кетсаль): видение, удача, изобилие. Взгляд с высоты, вдохновение, любовь и достаток. В тени — витание, оторванность от земли, мечты вместо шага."},
+ {k:"Ajmaq",y:"Cib",core:"Грех и прощение, мудрость предков. Принятие ошибок, всепрощение, древнее знание рода. В тени — груз вины, замкнутость, неумение отпустить прошлое."},
+ {k:"Noʼj",y:"Caban",core:"Мысль, знание, разум. Ясность ума, идеи, мудрость для общины, гармония с Землёй. В тени — переусложнение, упрямство мысли, голова без сердца."},
+ {k:"Tijax",y:"Etznab",core:"Обсидиановый нож, зеркало. Рассечение истинного и ложного, прямота, исцеление лезвием. В тени — резкость, раны словом, рассечение там, где не нужно."},
+ {k:"Kawoq",y:"Cauac",core:"Буря, община, семья, повитуха. Обновление через грозу, забота о роде, собирание людей. В тени — драматизм, перегрев, чужие тяготы, взятые на себя."},
+ {k:"Ajpu",y:"Ahau",core:"Стрелок, Солнце, герой. Завершённость, расцвет, мастерство, свет для других, преодоление тьмы. В тени — завышенная планка к себе, нетерпимость к своей неидеальности."}
+];
+
+// same 20 signs, named in Dreamspell's vocabulary (translation of the nawal, NOT the Dreamspell kin of the date)
+const DS=["Красный Дракон","Белый Ветер","Синяя Ночь","Жёлтое Семя","Красный Змей",
+ "Белый Соединитель Миров","Синяя Рука","Жёлтая Звезда","Красная Луна","Белая Собака",
+ "Синяя Обезьяна","Жёлтый Человек","Красный Идущий по Небу","Белый Маг","Синий Орёл",
+ "Жёлтый Воин","Красная Земля","Белое Зеркало","Синяя Буря","Жёлтое Солнце"];
+const DSEN=["Red Dragon","White Wind","Blue Night","Yellow Seed","Red Serpent",
+ "White Worldbridger","Blue Hand","Yellow Star","Red Moon","White Dog",
+ "Blue Monkey","Yellow Human","Red Skywalker","White Wizard","Blue Eagle",
+ "Yellow Warrior","Red Earth","White Mirror","Blue Storm","Yellow Sun"];
+
+
+// per-nawal structured content (deduplicated): image, character, gift/calling, shadow, day-favourable, day-avoid
+const DESC=[
+{img:"Вода, море, дождь · левая сторона мира",char:"Глубокий, интуитивный человек истока — чувствует скрытые течения там, где другие видят гладь.",gift:"Давать начало, питать и взращивать, быть опорой; идут творчество и забота.",shadow:"Тонет в собственной чувствительности и сомнениях, теряет твёрдую почву под ногами.",dfor:"Заронить идею, начать на самой ранней стадии, позаботиться о ком-то, обратиться к воде и корням.",dnot:"Дела, требующие готового результата и публичной чёткости — энергия ещё текучая."},
+{img:"Воздух, ветер · дыхание",char:"Человек духа и слова — проводник, что пропускает через себя идею или истину и передаёт дальше.",gift:"Речь, преподавание, вдохновение, чутьё к незримому; умение одушевлять.",shadow:"Рассеивается в словах, мечется, обещает ветром то, что не удержать.",dfor:"Разговоры, переговоры, договорённости, молитва, очищение дыханием — всё, что нужно озвучить.",dnot:"Дела, которым нужна оседлость и долгая выдержка — ветер сносит начатое."},
+{img:"Заря · очаг · предрассветный час",char:"Человек рассвета — несёт обе стороны, глубину ночи и свет утра; выводит скрытое наружу.",gift:"Приносить новое, обновлять застоявшееся, освещать тёмные углы.",shadow:"Страх, желание спрятаться, застревание в сумерках нерешённого.",dfor:"Начинания, новоселья, прояснение тайн, примирения — всё, что должно взойти на свет.",dnot:"То, что любит оставаться скрытым."},
+{img:"Сеть · плетёный амбар · силок",char:"Человек-сеть — собирает вокруг себя людей и ресурсы, держит общность, копит ценное.",gift:"Связывать и хранить, притягивать, вести хозяйство.",shadow:"Запутывается в привязанностях и долгах, превращает сеть в плен — свой и чужой.",dfor:"Собрать людей, навести связи, заняться накопленным, распутать сложное, вернуть своё.",dnot:"Новые обязательства и сделки-силки — легко повязать себя надолго."},
+{img:"Змей · позвоночник · жизненная сила",char:"Человек сильной витальности и харизмы — чувствует правду телом, прежде мысли.",gift:"Нести и пробуждать жизненную силу, исцелять, вести страстью.",shadow:"Оказывается во власти импульсов — вспыльчивость, одержимость.",dfor:"Исцеление, телесные практики, страстные и смелые дела, пробуждение энергии.",dnot:"Несдержанность — легко вспыхнуть и поддаться порыву."},
+{img:"Сова · север · предки",char:"Человек порога — спокоен у границы утраты и перемены, там, где другие отшатываются.",gift:"Сопровождать через переход, исцелять, помогать отпускать, хранить связь с ушедшими.",shadow:"Груз чужих утрат, оцепенение, застревание в прошлом.",dfor:"Поминовение предков, прощение, завершение дел, отпускание отжившего, выправление долгов.",dnot:"Начинания, которым нужен рост вовне — энергия обращена к закрытию."},
+{img:"Олень · четыре столба мира",char:"Человек-олень — несущая опора для других: сильный, ответственный, с авторитетом, что держит.",gift:"Брать на себя вес, поддерживать, вести с устойчивостью.",shadow:"Упрямство, перегрузка чужими тяготами, давление силой вместо мягкости.",dfor:"Дела силы и устойчивости, принятие ответственности, защита, лидерство.",dnot:"Тонкие, гибкие материи — день любит прямую крепкую опору."},
+{img:"Семя · кролик · Венера",char:"Человек семени — тёплый, щедрый, видит в малом будущий урожай.",gift:"Взращивать, заботиться о росте, начинать то, что даст плод.",shadow:"Разбросанность, незрелые порывы, распыление сил.",dfor:"Посев буквальный и переносный, начало дел, которым суждено вырасти; изобилие, любовь.",dnot:"Рвать незрелое раньше срока."},
+{img:"Огонь жертвенника · подношение",char:"Человек расплаты — остро чувствует закон взаимности: за всё надо платить.",gift:"Выравнивать счета, благодарить, искупать, нести бремя за других.",shadow:"Груз вины, страдание как валюта, бесконечные счёты «кто кому должен».",dfor:"Уплата долгов, благодарность, искупление, примирение, подношения.",dnot:"Беспечность к обязательствам — в этот день спрашивается по счетам."},
+{img:"Пёс · закон · верность",char:"Человек-пёс — верный, тёплый, с обострённым чувством справедливости; держит слово.",gift:"Хранить верность и закон, защищать своих, вести и оберегать.",shadow:"Ревность, обидчивость, двойные мерки, цепляние за «свою стаю».",dfor:"Дела справедливости и закона, союзы, защита близких, разрешение тяжб.",dnot:"Ревность и сведение счётов — обиды перевешивают здравый смысл."},
+{img:"Обезьяна · нить · ткацкий станок",char:"Человек-ткач — одарённый, артистичный, лёгкий; чувствует нить времени, рода, отношений.",gift:"Творить, держать непрерывность, соединять начала с продолжением.",shadow:"Запутывается в начатом, рассеивается, заигрывается.",dfor:"Брак, творчество, начало долгих дел, ремесло — всё, чему суждено тянуться.",dnot:"Поспешные разовые дела — день про длящееся."},
+{img:"Дорога · лестница · странствие",char:"Человек дороги — дружелюбный, лёгкий на подъём, умеет ладить и открывать пути.",gift:"Вести по тропе, служить идущим следом, находить направление.",shadow:"Неприкаянность, бегство в дорогу, неумение пустить корни.",dfor:"Путешествия, начинания «в путь», переговоры — всё, что требует удачи и направления.",dnot:"То, что требует прочной оседлости здесь и сейчас."},
+{img:"Тростник · посох · стебель кукурузы",char:"Человек-тростник — прямой надёжный стержень: опора дома и рода, человек принципа.",gift:"Держать ось, оберегать семью и детей, стоять на принципе.",shadow:"Негибкость, морализаторство, жёсткость ради «правильно».",dfor:"Дела семьи и жилища, укрепление устоев, защита детей, порядок в доме.",dnot:"То, что требует гибкости и компромисса."},
+{img:"Ягуар · земля · алтарь",char:"Человек-ягуар — скрытая мощь и грация, чутьё к незримому, связь с местами силы; действует тихо.",gift:"Хранить силу земли и тайное знание, действовать точно и незаметно.",shadow:"Затаённость, своеволие, власть, обращённая внутрь себя.",dfor:"Обращение к Земле и местам силы, тайные, тонкие, шаманские дела.",dnot:"Шумная публичность."},
+{img:"Орёл · кетсаль · видение",char:"Человек-птица — видит картину целиком, удачлив, вдохновлён, тянется к свободе.",gift:"Приносить видение и удачу, вдохновлять, охватывать целое.",shadow:"Витание в облаках, оторванность от земли, мечты вместо шага.",dfor:"Деньги, любовь, замыслы, союзы — всё, чему нужно везение и широкий взгляд.",dnot:"Кропотливая приземлённая рутина."},
+{img:"Предки · проступок · прощение",char:"Человек прощения — мудрый, мягкий к чужим и своим ошибкам, умеет принимать и отпускать.",gift:"Прощать, мирить, хранить память рода, передавать мудрость.",shadow:"Груз вины, замкнутость, неумение отпустить прошлое.",dfor:"Покаяние, примирение, прощение долгов и обид, обращение к предкам.",dnot:"Спрос и взыскание — день про принятие, а не счёты."},
+{img:"Разум · мысль · землетрясение",char:"Человек мысли — ясный ум, идеи, рассудительность; мыслит за общину.",gift:"Давать знание и добрый совет, прояснять, искать гармонию.",shadow:"Переусложнение, упрямство мысли, голова в отрыве от сердца.",dfor:"Решения, учёба, переговоры, планирование — всё, что требует ясной головы.",dnot:"Действие на одних эмоциях, без обдумывания."},
+{img:"Обсидиановый нож · кремень · зеркало",char:"Человек-нож — прямой, отделяет истинное от ложного, называет вещи именами; в нём и дар целителя.",gift:"Рассекать ложное, исцелять, говорить правду, разрешать узлы.",shadow:"Резкость, раны словом, рассечение там, где можно было не резать.",dfor:"Разрешение конфликтов, отсечение лишнего, исцеление, прямой разговор, разрыв с отжившим.",dnot:"Хрупкие связи, которые легко поранить неосторожным словом."},
+{img:"Гроза · община · повитуха",char:"Человек грозы — заботливый, собирает людей, обновляет застоявшееся, чувствует нужды рода.",gift:"Заботиться об общине и семье, обновлять, оживлять встряской.",shadow:"Драматизм, перегрев, чужие тяготы сверх меры.",dfor:"Дела семьи и общины, исцеление, разрешение накопившегося, забота о близких.",dnot:"Дела, которым нужна тишина и одиночество."},
+{img:"Стрелок-герой · солнце · цветок",char:"Человек-солнце — цельный, ясный, мастеровитый, со стойкостью, прошедшей испытание.",gift:"Доводить до совершенства, вдохновлять и освещать других.",shadow:"Завышенная планка к себе, нетерпимость к собственной неидеальности.",dfor:"Завершения, торжества, защита, смелые решающие действия, доведение до мастерства.",dnot:"Незрелые начинания — день про вершину, а не про старт."}];
+
+// short thematic keyword per nawal (genitive) — used in the day synthesis
+const KW=["истока и питания","духа и слова","рассвета и обновления","собирания и сетей",
+ "витальной силы и инстинкта","порога и перехода","опоры и ответственности","семени и зрелости",
+ "расплаты и взаимности","верности и закона","творчества и нити времени","дороги и пути",
+ "опоры дома и принципа","земной силы и тайны","видения и удачи","прощения и предков",
+ "мысли и знания","рассечения и исцеления","грозы и общины","света и завершения"];
+
+
+
+
+// numbers 1..13 (kʼicheʼ) + quality
+const NUM={
+ 1:["Jun","зачин, единство, замысел; искра нового."],
+ 2:["Kebʼ","полярность, выбор, напряжение двух сторон; внутренний диалог."],
+ 3:["Oxibʼ","движение, действие, ритм; первая динамика."],
+ 4:["Kajibʼ","устойчивость, четыре опоры, мера; заземление."],
+ 5:["Job","центр, сердцевина, мобилизация; организующая ось."],
+ 6:["Waqibʼ","поток, налаживание, рабочий порядок; обустройство."],
+ 7:["Wuqubʼ","равновесие, ось ряда, резонанс; срединная, медитативная точка."],
+ 8:["Wajxaqibʼ","целостность, гармония, соответствие формы и сути; этическая мера."],
+ 9:["Bʼelejebʼ","выношенность, терпение, завершение больших циклов; глубина."],
+ 10:["Lajuj","проявление, воплощение в материи, испытание делом; по-крупному."],
+ 11:["Julajuj","расшатывание, прорыв, растворение застывшего; высокое напряжение."],
+ 12:["Kabʼlajuj","охват, понимание, сведение многого воедино; почти зрелость."],
+ 13:["Oxlajuj","вершина, полнота, выход за предел; высший, мистический тон."]
+};
+
+// directions by nameIndex%4 ; ink=swatch pigment, accent=legible-on-dark
+const DIR=[
+ {name:"Восток",col:"Красный",ink:"#bc3b2e",accent:"#d9543f",q:"восход, рождение, начало, жизненная сила",rose:0},
+ {name:"Север", col:"Белый",  ink:"#ece4d2",accent:"#ece4d2",q:"предки, мудрость старших, очищение, кость",rose:1},
+ {name:"Запад", col:"Чёрный", ink:"#14181b",accent:"#6e8b86",q:"закат, глубина, тайное, переход",rose:2},
+ {name:"Юг",    col:"Жёлтый", ink:"#d9a227",accent:"#e8b53f",q:"тепло, зрелость, спелость, изобилие",rose:3}
+];
+
+// continuous count anchored to 2012-12-21 = 4 Ajaw (GMT 584283), name index 19
+const ANCHOR=Date.UTC(2012,11,21);
+function compute(y,m,d){
+  const diff=Math.round((Date.UTC(y,m-1,d)-ANCHOR)/86400000);
+  const tone=mod(3+diff,13)+1;
+  const idx=mod(19+diff,20);
+  const lordIdx=mod(idx-(tone-1),20);          // trecena lord (tone 1)
+  const prevIdx=mod(idx-1,20), nextIdx=mod(idx+1,20);
+  const prevTone=mod(3+diff-1,13)+1, nextTone=mod(3+diff+1,13)+1;
+  return {tone,idx,lordIdx,prevIdx,prevTone,nextIdx,nextTone};
+}
+
+function numeral(n){
+  const bars=Math.floor(n/5), dots=n%5;
+  let dotsHtml="";
+  for(let i=0;i<dots;i++) dotsHtml+='<span class="dot"></span>';
+  let barsHtml="";
+  for(let i=0;i<bars;i++) barsHtml+='<span class="bar"></span>';
+  const dotsRow=dots? `<div class="dots">${dotsHtml}</div>`:"";
+  const barsCol=bars? `<div class="bars">${barsHtml}</div>`:"";
+  return `<div class="numeral">${dotsRow}${barsCol}<span class="numlabel">${n}</span></div>`;
+}
+
+function rose(active){
+  // quincunx: four triangles meeting at center; active quadrant filled
+  // order indices: 0 East(right),1 North(top),2 West(left),3 South(bottom)
+  const tri=[
+    "M31,31 L60,2 L60,60 Z",   // east  (right)  -> approx right wedge
+    "M31,31 L2,2 L60,2 Z",     // north (top)
+    "M31,31 L2,60 L2,2 Z",     // west  (left)
+    "M31,31 L60,60 L2,60 Z"    // south (bottom)
+  ];
+  let s='<svg class="rose" viewBox="0 0 62 62" aria-hidden="true">';
+  tri.forEach((p,i)=> s+=`<path class="q${i===active?' active':''}" d="${p}"/>`);
+  s+='<circle class="center" cx="31" cy="31" r="4.5"/></svg>';
+  return s;
+}
+
+function render(){
+  const val=document.getElementById('d').value;
+  const card=document.getElementById('card');
+  const result=document.getElementById('result');
+  const note=document.getElementById('note');
+  if(!val){
+    card.innerHTML='<div class="empty">Выбери дату и нажми «Определить день».</div>';
+    result.classList.add('show');note.hidden=true;return;
+  }
+  const [y,m,d]=val.split('-').map(Number);
+  const r=compute(y,m,d);
+  const naw=N[r.idx], dir=DIR[r.idx%4], lord=N[r.lordIdx];
+  const numK=NUM[r.tone], prev=N[r.prevIdx], next=N[r.nextIdx];
+  const ds=DS[r.idx], dsEn=DSEN[r.idx], c=DESC[r.idx];
+
+  card.style.setProperty('--dir',dir.accent);
+  card.innerHTML=`
+    <div class="head">
+      ${numeral(r.tone)}
+      <div class="names">
+        <h2 class="kiche">${numK[0]} ${naw.k}</h2>
+        <div class="yuc">${r.tone} ${naw.y}<span class="sep">·</span>знак №${r.idx+1} из 20</div>
+        <div class="ds"><span class="ds-tag">Dreamspell</span>${ds} <span class="dsen">(${dsEn})</span></div>
+      </div>
+      <div class="rose-wrap">${rose(dir.rose)}<span class="dir-label">${dir.name}</span></div>
+    </div>
+    <div class="grid">
+      <div class="cell">
+        <p class="k">Сторона · цвет</p>
+        <p class="v"><span class="swatch" style="background:${dir.ink}"></span>${dir.name}, ${dir.col.toLowerCase()}
+        <small>${dir.q}</small></p>
+      </div>
+      <div class="cell">
+        <p class="k">Волна · трецена</p>
+        <p class="v">1 ${lord.k}<small>13-дневный цикл под началом ${lord.y}</small></p>
+      </div>
+      <div class="cell">
+        <p class="k">Откуда выходишь</p>
+        <p class="v">${r.prevTone} ${prev.k}<small>предыдущий день</small></p>
+      </div>
+      <div class="cell">
+        <p class="k">Куда входишь</p>
+        <p class="v">${r.nextTone} ${next.k}<small>следующий день</small></p>
+      </div>
+    </div>
+    <div class="read">
+      <div class="angle">Человек этого дня</div>
+      <p class="image-line">${c.img}</p>
+      <dl class="facets">
+        <div><dt>Характер</dt><dd>${c.char}</dd></div>
+        <div><dt>Дар · призвание</dt><dd>${c.gift}</dd></div>
+        <div><dt>Теневая сторона</dt><dd>${c.shadow}</dd></div>
+        <div><dt>Число ${r.tone} ${numK[0]}</dt><dd>${numK[1]}</dd></div>
+      </dl>
+      <p class="synth">В сумме: качество числа <b>${r.tone} ${numK[0]}</b> на знаке <b>${naw.k}</b> (тема ${KW[r.idx]}), в фоне волны <b>1 ${lord.k}</b> — ${KW[r.lordIdx]}. Это тенденция и призвание, а не приговор.</p>
+
+      <div class="angle day">День для дел</div>
+      <p class="day-note">Это уже не про человека, а про сам день — авгурий: для чего он годится, а что лучше отложить.</p>
+      <dl class="facets">
+        <div><dt>Благоприятно</dt><dd>${c.dfor}</dd></div>
+        <div><dt>Лучше отложить</dt><dd>${c.dnot}</dd></div>
+      </dl>
+    </div>`;
+
+  note.hidden=false;
+  note.innerHTML='<b>О методе.</b> Расчёт — непрерывный счёт цолькина по корреляции GMT (584283), той, что ведут хранители дней Гватемалы. Чтение нawalя как склада и призвания человека — подлинная часть ремесла ajqʼij, как и авгурий дня; разделены они здесь намеренно. Но единый гладкий «портрет» — современная подача: настоящий ajqʼij не считывает характер с таблицы, а гадает заново под конкретный вопрос, и держит это как тенденцию, а не приговор. Зеркало для размышления, не предсказание.<br><br><b>Про строку Dreamspell.</b> Это тот же знак жреческого дня, просто названный в «цветном» словаре Аргуэльеса — перевод нawalя, а <b>не</b> Dreamspell-сигнатура этой даты. Из-за «заморозки» 29 февраля счёт Dreamspell расходится с жреческим, и сигнатура по той системе для этой же даты дала бы, как правило, <b>другой</b> знак.';
+
+  result.classList.remove('show'); void result.offsetWidth; result.classList.add('show');
+}
+
+document.getElementById('go').addEventListener('click',render);
+document.getElementById('d').addEventListener('keydown',e=>{if(e.key==='Enter')render();});
+(function(){const t=new Date();
+  document.getElementById('d').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;})();
+render();
+</script>
+</body>
+</html>
