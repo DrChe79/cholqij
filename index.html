@@ -170,6 +170,26 @@
   .reading .close{font-size:15px;color:var(--bone);background:rgba(52,160,136,.06);
     border:1px solid var(--hair);border-radius:10px;padding:15px 17px;margin:6px 0 0}
 
+  /* CHAT */
+  .chatwrap{background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--hair-strong);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+  .chat-log{padding:20px;display:flex;flex-direction:column;gap:12px;min-height:180px;max-height:58vh;overflow-y:auto}
+  .msg{max-width:86%;padding:11px 14px;border-radius:14px;font-size:14.5px;line-height:1.5}
+  .msg.bot{align-self:flex-start;background:rgba(52,160,136,.08);border:1px solid var(--hair);
+    color:var(--bone-dim);border-bottom-left-radius:4px}
+  .msg.user{align-self:flex-end;background:rgba(232,226,210,.06);border:1px solid var(--hair-strong);
+    color:var(--bone);border-bottom-right-radius:4px}
+  .msg b{color:var(--bone);font-weight:500}
+  .msg.typing{opacity:.55;letter-spacing:.25em}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 14px}
+  .chip{background:transparent;border:1px solid var(--hair-strong);color:var(--jade-bright);
+    border-radius:20px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-family:"Inter";
+    transition:background .2s,border-color .2s}
+  .chip:hover{background:rgba(52,160,136,.08);border-color:var(--jade)}
+  .chat-input{display:flex;gap:10px;padding:16px;border-top:1px solid var(--hair)}
+  .chat-input input{flex:1}
+  .chat-input .btn{padding:13px 20px}
+
   @media (max-width:560px){
     .head{flex-wrap:wrap;gap:18px}.rose-wrap{order:3}.grid{grid-template-columns:1fr}
     .read .facets > div{grid-template-columns:1fr;gap:5px}
@@ -187,6 +207,7 @@
   <div class="tabs">
     <button class="tab active" data-v="single">Личность</button>
     <button class="tab" data-v="pair">Взаимодействие</button>
+    <button class="tab" data-v="chat">Беседа</button>
   </div>
 
   <!-- ░░ SINGLE ░░ -->
@@ -221,6 +242,20 @@
     </div>
     <div class="result" id="result2"></div>
     <p class="note" id="note2" hidden></p>
+  </section>
+
+  <!-- ░░ CHAT ░░ -->
+  <section id="view-chat" class="view" hidden>
+    <p class="lede">Помощник, который беседует только про календарь жрецов майя. Спроси про дату, знак-нawal, число-тон, стороны и волны — или чем этот счёт отличается от Dreamspell.</p>
+    <div class="chatwrap">
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chips" id="chat-chips"></div>
+      <div class="chat-input">
+        <input type="text" id="chat-input" placeholder="Спроси про календарь…" autocomplete="off">
+        <button class="btn" id="chat-send">Спросить</button>
+      </div>
+    </div>
+    <p class="note">Пока к странице не подключён ИИ-посредник, это локальный помощник на знаниях самой страницы — отвечает офлайн и только в рамках календаря жрецов. Если подключить Cloudflare Worker (см. отдельную инструкцию), беседа становится свободной — через модель Claude, но на ту же тему; при сбое или исчерпании лимита бот сам возвращается к офлайн-ответам.</p>
   </section>
 </div>
 
@@ -612,13 +647,105 @@ function runPair(){
   result.classList.remove('show');void result.offsetWidth;result.classList.add('show');
 }
 
+/* ── chat assistant (rule-based, offline) ── */
+const cnorm=s=>s.toLowerCase().replace(/[ʼʻ'’`]/g,'').replace(/ё/g,'е');
+const ALIASES=[
+ ['имош',0],['имиш',0],['ветер',1],['рассвет',2],['акбаль',2],['акабаль',2],
+ ['сеть',3],['змей',4],['чикчан',4],['кеме',5],['сова',5],['смерть',5],['кими',5],
+ ['олень',6],['кей',6],['кех',6],['семя',7],['кролик',7],['канил',7],['ламат',7],
+ ['подношени',8],['тох',8],['мулук',8],['пес',9],['собак',9],['цьи',9],['цъи',9],
+ ['обезьян',10],['бац',10],['чуэн',10],['дорог',11],['странств',11],['тростник',12],
+ ['посох',12],['ягуар',13],['орел',14],['птиц',14],['кетсаль',14],['цикин',14],
+ ['прощени',15],['ахмак',15],['мысл',16],['разум',16],['землетряс',16],['нохъ',16],
+ ['обсидиан',17],['зеркал',17],['тихаш',17],['нож',17],['буря',18],['гроза',18],
+ ['кавок',18],['солнце',19],['ахпу',19],['стрелок',19]];
+N.forEach((o,i)=>{ALIASES.push([cnorm(o.k),i]);ALIASES.push([cnorm(o.y),i]);});
+ALIASES.sort((a,b)=>b[0].length-a[0].length);
+function findNawal(s){const t=cnorm(s);for(const [a,i] of ALIASES){if(a.length>=3&&t.includes(a))return i;}return -1;}
+
+const MONTHS=[['янва',1],['февр',2],['март',3],['апре',4],['мая',5],['май',5],['июн',6],['июл',7],['авгу',8],['сент',9],['октя',10],['нояб',11],['дека',12]];
+function realDate(y,m,d){const dt=new Date(Date.UTC(y,m-1,d));return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d;}
+function parseDate(s){let m;
+  if(m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)){const r=[+m[1],+m[2],+m[3]];return realDate(...r)?r:null;}
+  if(m=s.match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/)){const r=[+m[3],+m[2],+m[1]];return realDate(...r)?r:null;}
+  if(m=s.match(/(\d{1,2})\s+([а-я]+)\s+(\d{4})/i)){const day=+m[1],yr=+m[3],mw=m[2].toLowerCase();
+    for(const [k,n] of MONTHS){if(mw.startsWith(k)){return realDate(yr,n,day)?[yr,n,day]:null;}}}
+  return null;}
+function parseNum(s){const m=s.match(/(?:числ\w*|тон\w*)\D{0,5}(\d{1,2})/i);if(m){const n=+m[1];if(n>=1&&n<=13)return n;}return null;}
+
+function dayLine(y,m,d,prefix){
+  const r=compute(y,m,d),naw=N[r.idx],dir=DIR[r.idx%4],lord=N[r.lordIdx];
+  const dd=String(d).padStart(2,'0'),mm=String(m).padStart(2,'0');
+  return `${prefix} по счёту жрецов — это <b>${r.tone} ${naw.k}</b> (${r.tone} ${naw.y}). Сторона: ${dir.name.toLowerCase()}, ${dir.col.toLowerCase()}; волна: 1 ${lord.k}. Коротко: ${DESC[r.idx].char} Полный портрет — во вкладке «Личность» по дате ${dd}.${mm}.${y} (там кнопка «Подробный портрет»).`;
+}
+const FAQ=[
+ [/dreamspell|аргуэл|чем\s+отлич|разниц|13[:\s-]?20/, 'Dreamspell — система Хосе Аргуэльеса (1980–90-е), а не древний календарь майя. Она привязана к григорианскому году и «замораживает» 29 февраля, из-за чего её счёт расходится с непрерывным счётом жрецов — для одной даты они часто дают <b>разные</b> знаки. Здесь считается именно жреческий, непрерывный счёт. Строка «Dreamspell» в карточке — лишь перевод имени знака в «цветной» словарь Аргуэльеса, не его сигнатура даты.'],
+ [/29\s?фев|високос|заморозк/, 'В жреческом счёте нет високосных дней вообще — он идёт непрерывно. Dreamspell же «замораживает» 29 февраля (счёт в этот день не двигается), чтобы каждая дата из года в год давала ровный сдвиг. Поэтому два счёта расходятся на один день каждый високосный год.'],
+ [/корреляц|\bgmt\b|584283/, 'Я считаю по корреляции GMT (584283): это привязка, при которой 21 декабря 2012 = 4 Ахпу. Её же держатся живые календаристы кʼиче в Гватемале.'],
+ [/\b52\b|календарн\w*\s*круг|круг\s*календар/, '52 года (52×365 дней) = 73 оборота цолькина — всё возвращается в ту же точку. Это классический «календарный круг» майя. У жрецов он отмеряется их собственными 365-дневными годами, а не григорианскими.'],
+ [/волн|трецен/, 'Трецена — это 13-дневная «волна», которой правит её первый день (1 такой-то нawal). День внутри волны звучит на фоне её темы — она задаёт направление, ради которого звучит знак. В определителе волна показана для каждой даты.'],
+ [/цолькин|чольк|священн\w*\s*календар|что\s+так\w*\s*(этот\s+)?(календар|счет|счёт)/, 'Цолькин (кʼиче — чолькʼих) — священный 260-дневный счёт майя: 20 знаков-нawalей крутятся вместе с числами от 1 до 13, и 20×13 даёт 260 неповторяющихся сочетаний. Жрецы-календаристы (ахкʼихаб) Гватемалы ведут его непрерывно по сей день. Назови дату — скажу её день.'],
+ [/сторон|четыре\s+цвет|цвет\w*\s+знак|направлени/, 'Каждый нawal привязан к стороне света и цвету, и они идут по кругу: Восток — красный (начало, жизненная сила), Север — белый (предки, очищение), Запад — чёрный (тайное, глубина), Юг — жёлтый (зрелость, тепло). 1-й знак красный, 2-й белый, 3-й чёрный, 4-й жёлтый, 5-й снова красный — и так далее.']
+];
+function replyTo(text){
+  const s=text.trim(), low=cnorm(s);
+  const dt=parseDate(s);
+  if(dt) return dayLine(dt[0],dt[1],dt[2], `<b>${String(dt[2]).padStart(2,'0')}.${String(dt[1]).padStart(2,'0')}.${dt[0]}</b>`);
+  if(/сегодня|какой\s+(сейчас\s+)?день|день\s+сегодня|нынешн/.test(low)){const t=new Date();return dayLine(t.getFullYear(),t.getMonth()+1,t.getDate(),'Сегодня');}
+  for(const [rx,ans] of FAQ){if(rx.test(low))return ans;}
+  const ni=findNawal(s);
+  if(/знак/.test(low) && /(каки|сколько|перечисл|список|\bвсе\b|быва|двадцат|\b20\b)/.test(low) && ni<0)
+    return 'Знаков-нawalей двадцать, и они идут по кругу: '+N.map(o=>o.k).join(', ')+'. Каждый привязан к стороне света, числу-тону и волне (в скобках юкатекские имена: '+N.slice(0,4).map(o=>o.k+'='+o.y).join(', ')+'… и так далее). Назови любой знак — расскажу о нём; или дай дату — посчитаю день.';
+  if(ni>=0)return `<b>${N[ni].k} (${N[ni].y})</b> — ${LONG[ni]} Сторона света — ${DIR[ni%4].name.toLowerCase()}, ${DIR[ni%4].col.toLowerCase()}. Назови дату — посчитаю, у кого этот знак.`;
+  const nn=parseNum(s);
+  if(nn)return `<b>Число ${nn} (${NUM[nn][0]})</b> — ${NUMLONG[nn-1]}`;
+  if(/тон|числ/.test(low))
+    return 'Чисел-тонов тринадцать (1–13), и они идут вместе со знаками. Младшие (1–4) — мягкие, заземляющие; серединные (5–9) — уравновешивающие, рабочие; старшие (10–13) — напряжённые, проявляющие и расшатывающие. Каждый день — это число и знак (например, 4 Кеме). Назови число от 1 до 13 — расскажу подробнее.';
+  if(/привет|здравств|добр\w*\s+(день|утр|вечер|ночи)|здаров|hello|^hi\b/.test(low))
+    return 'Здравствуй! Спроси меня про дату рождения, про знак-нawal (Кеме, Ягуар, Пёс, Орёл…), про число-тон, стороны света или волны — или чем счёт жрецов отличается от Dreamspell.';
+  if(/помощ|что\s+ты\s+(умеешь|можешь|знаешь)|как\s+пользоват|команд|зачем\s+ты/.test(low))
+    return 'Я считаю день по любой дате (напиши «30 мая 1989» или «07.10.1952»), объясняю каждый из 20 знаков-нawalей и 13 чисел-тонов, стороны света и волны, разницу с Dreamspell, корреляцию GMT и 52-летний круг. Попробуй: «расскажи про Кеме», «что значит число 4», «какой сегодня день».';
+  return 'Я беседую только про <b>календарь жрецов майя</b> (цолькин). Спроси про дату рождения, про знак-нawal, число-тон, стороны света или волны — либо чем этот счёт отличается от Dreamspell. На остальное, увы, не отвечаю.';
+}
+// ── Чтобы беседа стала живым ИИ, вставь сюда адрес своего Cloudflare Worker
+// (вида https://имя.логин.workers.dev). Пока строка пустая — помощник работает
+// офлайн по правилам, как сейчас. При сбое Worker тоже срабатывает офлайн-ответ.
+const WORKER_URL = "";
+let chatHistory = [];
+function chatAdd(role,html){const log=document.getElementById('chat-log');const d=document.createElement('div');d.className='msg '+role;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+function chatTyping(){const log=document.getElementById('chat-log');const d=document.createElement('div');d.className='msg bot typing';d.textContent='…';log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+const fmt=s=>esc(s).replace(/\n+/g,'<br>');
+function chatSend(t){
+  const inp=document.getElementById('chat-input');
+  t=(t!=null?t:inp.value).trim(); if(!t)return;
+  chatAdd('user',esc(t)); inp.value='';
+  if(!WORKER_URL){ setTimeout(()=>chatAdd('bot',replyTo(t)),130); return; }
+  chatHistory.push({role:'user',content:t});
+  const typing=chatTyping();
+  fetch(WORKER_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:chatHistory.slice(-12)})})
+    .then(r=>r.json())
+    .then(d=>{ typing.remove();
+      const text=d&&typeof d.text==='string'?d.text.trim():'';
+      if(text){ chatHistory.push({role:'assistant',content:text}); chatAdd('bot',fmt(text)); }
+      else { chatAdd('bot',replyTo(t)); }
+    })
+    .catch(()=>{ typing.remove(); chatAdd('bot',replyTo(t)); });
+}
+(function(){
+  chatAdd('bot','Привет! Я отвечаю только про <b>календарь жрецов майя</b> — цолькин. Назови дату рождения, спроси про знак-нawal (Кеме, Ягуар, Пёс…), про число-тон, стороны света и волны — или чем этот счёт отличается от Dreamspell.');
+  const chips=["Что такое цолькин?","Чем отличается от Dreamspell?","Какой сегодня день?","Расскажи про Кеме"];
+  const box=document.getElementById('chat-chips');
+  chips.forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c;b.onclick=()=>chatSend(c);box.appendChild(b);});
+  document.getElementById('chat-send').addEventListener('click',()=>chatSend());
+  document.getElementById('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter')chatSend();});
+})();
+
 /* ── tabs ── */
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   const v=t.dataset.v;
-  document.getElementById('view-single').hidden = v!=='single';
-  document.getElementById('view-pair').hidden   = v!=='pair';
+  ['single','pair','chat'].forEach(name=>{document.getElementById('view-'+name).hidden = v!==name;});
 }));
 
 document.getElementById('go').addEventListener('click',render);
