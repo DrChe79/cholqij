@@ -710,7 +710,7 @@ function replyTo(text){
 // ── Чтобы беседа стала живым ИИ, вставь сюда адрес своего Cloudflare Worker
 // (вида https://имя.логин.workers.dev). Пока строка пустая — помощник работает
 // офлайн по правилам, как сейчас. При сбое Worker тоже срабатывает офлайн-ответ.
-const WORKER_URL = "";
+const WORKER_URL = "https://cholqij.cherninmaxim.workers.dev";
 let chatHistory = [];
 function chatAdd(role,html){const log=document.getElementById('chat-log');const d=document.createElement('div');d.className='msg '+role;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
 function chatTyping(){const log=document.getElementById('chat-log');const d=document.createElement('div');d.className='msg bot typing';d.textContent='…';log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
