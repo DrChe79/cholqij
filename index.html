@@ -254,6 +254,18 @@
   .ref-body .ref-meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--sage)}
   .ref-numeral{margin-top:14px}
 
+  /* QUOTE OF THE DAY */
+  .day-quote{--dq:var(--jade-bright);background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--hair-strong);border-left:3px solid var(--dq);border-radius:14px;
+    padding:18px 20px;margin:0 0 22px}
+  .dq-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+  .dq-label{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dq)}
+  .dq-date{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--sage)}
+  .dq-motto{font-family:"Fraunces",serif;font-size:20px;line-height:1.42;color:var(--bone);margin-bottom:11px}
+  .dq-sign{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--bone-dim)}
+  .dq-sign b{color:var(--dq);font-weight:500}
+
   /* WAVE STRIP */
   .wave-intro{font-size:14px;color:var(--bone-dim);margin:12px 0 12px}
   .wave-intro b{color:var(--bone);font-weight:500}
@@ -911,14 +923,14 @@ function runDay(){
     const [yy,mm2,dd2]=vb.split('-').map(Number), B=compute(yy,mm2,dd2);
     document.documentElement.style.setProperty('--a',DIR[B.idx%4].accent);
     document.documentElement.style.setProperty('--b',dAcc);
-    result.innerHTML=`<div class="cards">${personCard(B,'Ты')}${personCard(D,dLabel)}</div><div class="reading">${buildDayRead(B,D,yb)}</div>`;
+    result.innerHTML=`<div class="cards">${personCard(B,'Ты')}${personCard(D,dLabel)}</div><div class="reading">${dayQuoteCard(D,dd,md,yd)}${buildDayRead(B,D,yb)}</div>`;
     note.innerHTML='<b>Как это читать.</b> Слева — твоя постоянная природа (знак рождения), справа — преходящий тон дня; ниже — как одно ложится на другое. Это совет об уместности, а не предсказание событий. Завтра тон дня другой — твоя суть та же.';
     addShare(result.querySelector('.reading'), 'day='+vd+'&born='+vb);
     addImgBtn(result.querySelector('.reading'), ()=>pairCardSVG(B,D,'Ты','День '+String(dd).padStart(2,'0')+'.'+String(md).padStart(2,'0')), 'cholqij-day-'+vd+'.png');
   } else {
     document.documentElement.style.setProperty('--a',dAcc);
     document.documentElement.style.setProperty('--b',dAcc);
-    result.innerHTML=`<div class="cards" style="grid-template-columns:1fr">${personCard(D,dLabel)}</div><div class="reading">${buildDayOnly(D,yb)}</div>`;
+    result.innerHTML=`<div class="cards" style="grid-template-columns:1fr">${personCard(D,dLabel)}</div><div class="reading">${dayQuoteCard(D,dd,md,yd)}${buildDayOnly(D,yb)}</div>`;
     note.innerHTML='<b>Как это читать.</b> Это характер самого дня и его авгурий — к чему он располагает и что просит придержать, безотносительно к конкретному человеку. Добавь дату рождения выше — и я покажу, как этот день ложится именно на твою природу. Совет об уместности, не предсказание.';
     addShare(result.querySelector('.reading'), 'day='+vd);
     addImgBtn(result.querySelector('.reading'), ()=>composeCard({eyebrow:'CHOLQ\u02BCIJ · ДЕНЬ '+String(dd).padStart(2,'0')+'.'+String(md).padStart(2,'0')+'.'+yd, tone:D.tone, title:N[D.idx].k,
@@ -1159,6 +1171,37 @@ function addImgBtn(container, getSVG, filename){
   b.addEventListener('click',()=>{ b.textContent='Готовлю…';
     svgToPng(getSVG(), filename, ok=>{ b.textContent=ok?'Картинка сохранена ✓':'Не удалось'; setTimeout(()=>{b.textContent='Сохранить картинкой';},1800); }); });
   container.appendChild(b);
+}
+
+/* ── quote of the day ── */
+const MOTTO=[
+"Слушай глубину и питай начатое — день истока и тихих вод.",
+"Говори ясно и проветри застоявшееся — день ветра и слова.",
+"Выводи скрытое на свет — день порога между ночью и зарёй.",
+"Собери своё и реши, что отпустить — день сети.",
+"Доверься телу и живой силе, но держи огонь в узде — день змея.",
+"Отпусти отжившее, побудь у порога — день перехода и предков.",
+"Будь опорой и неси вес ровно — день оленя и четырёх сторон.",
+"Сей и взращивай — день семени, всё прорастает.",
+"Верни долги и уравняй счёт — день огня и взаимности.",
+"Будь верен и поступай по справедливости — день пса.",
+"Твори и сплетай нити — день обезьяны-ткача, начало времени.",
+"Открывай путь и иди легко — день дороги.",
+"Держи стержень и оберегай своих — день тростника.",
+"Действуй тихо и точно, слушай землю — день ягуара.",
+"Смотри с высоты и лови удачу — день птицы.",
+"Прощай и принимай — день предков и милости.",
+"Думай ясно, решай и советуй — день разума.",
+"Назови правду и разруби узел — день обсидианового ножа.",
+"Собери близких и обнови застой — день грозы и общины.",
+"Свети и доводи до мастерства — день Солнца-героя."];
+function dayQuoteCard(D,dd,md,yd){
+  const dir=DIR[D.idx%4];
+  return `<div class="day-quote" style="--dq:${dir.accent}">`+
+    `<div class="dq-top"><span class="dq-label">Цитата дня</span><span class="dq-date">${String(dd).padStart(2,'0')}.${String(md).padStart(2,'0')}.${yd}</span></div>`+
+    `<div class="dq-motto">«${MOTTO[D.idx]}»</div>`+
+    `<div class="dq-sign"><b>${D.tone} ${N[D.idx].k}</b> · ${KW[D.idx]} · ${dir.name.toLowerCase()}, ${dir.col.toLowerCase()}</div>`+
+    `</div>`;
 }
 
 /* ── tabs ── */
